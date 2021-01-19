@@ -27,6 +27,9 @@ class BaseMeta(type):
         if "__table_name__" not in attr:
             attr["__table_name__"] = name.lower()
 
+        if "__alias__" not in attr:
+            attr["__alias__"] = attr["__table_name__"]
+
         # Clone fields so fields of the subclass don't end up in the superclass.
         _fields = {}
         for base in bases:
@@ -39,7 +42,7 @@ class BaseMeta(type):
 
 class Base(metaclass=BaseMeta):
     __table_name__: ClassVar[str]
-    __alias__: ClassVar[Optional[str]] = None
+    __alias__: ClassVar[str]
     __fields__: ClassVar[Dict[str, FieldAttr[Any]]] = {}
 
     __data__: Dict[str, Any]
@@ -56,10 +59,10 @@ class Base(metaclass=BaseMeta):
             setattr(self, key, value)
 
     def __str__(self) -> str:
-        return self.__alias__ or self.__table_name__
+        return self.__alias__
 
     def __repr__(self) -> str:
-        return self.__alias__ or self.__table_name__
+        return self.__alias__
 
 
 T_Base = TypeVar("T_Base", bound=Base)

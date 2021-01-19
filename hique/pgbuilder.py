@@ -32,7 +32,7 @@ class PostgresqlQueryBuilder:
         for value in query._values:
             alias: Optional[str]
             if isinstance(value, FieldAttrDescriptor):
-                alias = f"{value.table.__alias__ or value.table.__table_name__}.{value.__alias__ or value.field.name}"
+                alias = f"{value.table.__alias__}.{value.__alias__ or value.field.name}"
             else:
                 alias = value.__alias__ or None
             if alias is None:
@@ -45,7 +45,7 @@ class PostgresqlQueryBuilder:
             froms = []
             for from_entry in query._from:
                 from_table = from_entry.__table_name__
-                from_alias = from_entry.__alias__ or from_entry.__table_name__
+                from_alias = from_entry.__alias__
                 if (from_table, from_alias) not in from_set:
                     from_set.add((from_table, from_alias))
                     if from_table != from_alias:
@@ -80,9 +80,7 @@ class PostgresqlQueryBuilder:
         return f"${args(value)}"
 
     def emit_field(self, field: FieldAttrDescriptor[Any], args: Args) -> str:
-        return self.quote(
-            field.table.__alias__ or field.table.__table_name__, field.field.name
-        )
+        return self.quote(field.table.__alias__, field.field.name)
 
     def emit_un_op(self, expr: UnOpExpr, args: Args) -> str:
         f = self.un_op_expr_map.get(expr.op)
