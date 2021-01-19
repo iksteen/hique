@@ -23,17 +23,13 @@ class SelectQuery(Query):
         self._from.extend(sources)
         return self
 
-    def filter(self, *args: Expr, **kwargs: Any) -> SelectQuery:
+    def filter(self, *args: Expr) -> SelectQuery:
         self._filter.extend(args)
-        self._filter.extend(
-            self._from[0]._fields[key].get_impl(self._from[0]) == value
-            for key, value in kwargs.items()
-        )
         return self
 
     def __repr__(self) -> str:
         filter = reduce(lambda a, i: a & i, self._filter[1:], self._filter[0])
-        return f"SELECT * FROM {','.join(f._table_name for f in self._from)} WHERE {filter}"
+        return f"SELECT * FROM {','.join(f.__table_name__ for f in self._from)} WHERE {filter}"
 
 
 def select(cls: Type[Base], *fields: Any) -> SelectQuery:

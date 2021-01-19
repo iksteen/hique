@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 
-from hique.base import FieldImplBase
+from hique.base import FieldAttrDescriptor
 from hique.expr import BinOpExpr, CallExpr, Expr, Literal, UnOpExpr
 from hique.query import Query, SelectQuery
 
@@ -45,8 +45,10 @@ class PostgresqlQueryBuilder:
     def emit_arg(self, value: object, args: Args) -> str:
         return f"${args(value)}"
 
-    def emit_field(self, field: FieldImplBase[Any], args: Args) -> str:
-        return self.quote(cast(str, field.table._table_name), field.field.name)
+    def emit_field(self, field: FieldAttrDescriptor[Any], args: Args) -> str:
+        return self.quote(
+            field.table.__alias__ or field.table.__table_name__, field.field.name
+        )
 
     def emit_un_op(self, expr: UnOpExpr, args: Args) -> str:
         f = self.un_op_expr_map.get(expr.op)
@@ -83,7 +85,7 @@ class PostgresqlQueryBuilder:
         object: emit_arg,
         Expr: not_implemented,
         Literal: lambda s, e, a: cast(str, e.value),
-        FieldImplBase: emit_field,
+        FieldAttrDescriptor: emit_field,
         UnOpExpr: emit_un_op,
         BinOpExpr: emit_bin_op,
         CallExpr: emit_call,

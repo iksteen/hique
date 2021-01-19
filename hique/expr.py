@@ -5,10 +5,10 @@ from typing import Any, Optional
 
 class Expr:
     op: str = ""
-    _alias: Optional[str] = None
+    __alias__: Optional[str] = None
 
     def alias(self, alias: str) -> Expr:
-        self._alias = alias
+        self.__alias__ = alias
         return self
 
     def __lt__(self, other: Any) -> BinOpExpr:

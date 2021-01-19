@@ -31,68 +31,52 @@ class BaseMeta(type):
         _fields = {}
         for base in bases:
             if issubclass(base, Base):
-                _fields.update(base._fields)
-        attr["_fields"] = _fields
+                _fields.update(base.__fields__)
+        attr["__fields__"] = _fields
 
         return cast(BaseMeta, super(BaseMeta, mcs).__new__(mcs, name, bases, attr))
 
 
 class Base(metaclass=BaseMeta):
     __table_name__: ClassVar[str]
-    _alias: ClassVar[Optional[str]] = None
-    _fields: ClassVar[Dict[str, FieldAttr[Any, Any]]] = {}
+    __alias__: ClassVar[Optional[str]] = None
+    __fields__: ClassVar[Dict[str, FieldAttr[Any]]] = {}
 
-    _data: Dict[str, Any]
+    __data__: Dict[str, Any]
 
     def __init__(self, **kwargs: Any):
-        self._data = {}
+        self.__data__ = {}
 
         cls = type(self)
 
         for key, value in kwargs.items():
             field_impl = getattr(cls, key, None)
-            if not isinstance(field_impl, FieldImplBase):
+            if not isinstance(field_impl, FieldAttrDescriptor):
                 raise KeyError(f"{key} is not a field")
             setattr(self, key, value)
 
-    @classmethod
-    @property
-    def _table_name(cls) -> str:
-        if cls._alias is not None:
-            return cls._alias
-        elif cls.__table_name__ is not None:
-            return cls.__table_name__
-        else:
-            return cls.__name__.lower()
-
     def __str__(self) -> str:
-        return self._table_name
+        return self.__alias__ or self.__table_name__
 
     def __repr__(self) -> str:
-        return self._table_name
+        return self.__alias__ or self.__table_name__
 
 
 def alias(cls: Type[Base], name: str) -> Type[Base]:
     return type(
         f"{cls.__name__}:{name}",
         (cls,),
-        {"__table_name__": cls.__table_name__, "_alias": name},
+        {"__table_name__": cls.__table_name__, "__alias__": name},
     )
 
 
 T = TypeVar("T")
 
 
-class FieldImplBase(Generic[T], Expr):
-    def __init__(self, table: Type[Base], field: FieldAttr[Any, Any]) -> None:
+class FieldAttrDescriptor(Generic[T], Expr):
+    def __init__(self, table: Type[Base], field: FieldAttr[Any]) -> None:
         self.table = table
         self.field = field
-
-    def from_python(self, value: Any) -> Optional[T]:
-        raise NotImplementedError
-
-    def to_python(self, value: Optional[T]) -> Any:
-        raise NotImplementedError
 
     def __str__(self) -> str:
         return self.field.name
@@ -101,77 +85,69 @@ class FieldImplBase(Generic[T], Expr):
         return f"{self.table()!r}.{self.field.name}"
 
 
-T_Value = TypeVar("T_Value")
-T_Impl = TypeVar("T_Impl", bound=FieldImplBase[Any])
 NO_VALUE = object()
 
 
-class FieldAttr(Generic[T_Value, T_Impl]):
-    impl_type: Type[T_Impl]
-    impl: WeakKeyDictionary[Type[Base], T_Impl]
-    nullable = False
-    default: Optional[Callable[[], T_Value]]
+class FieldAttr(Generic[T]):
+    impl: WeakKeyDictionary[Type[Base], FieldAttrDescriptor[T]]
     name: str
     attr_name: str
 
     def __init__(
         self,
         *,
-        default: Optional[Callable[[], T_Value]] = None,
+        default: Optional[Callable[[], T]] = None,
         name: Optional[str] = None,
     ):
         self.impl = WeakKeyDictionary()
-        self.default = default
+
+        if default is not None:
+            setattr(self, "default", default)
+
         if name is not None:
             self.name = name
 
-    def get_impl(self, owner: Type[Base]) -> T_Impl:
+    def default(self) -> T:
+        raise NotImplementedError
+
+    def get_impl(self, owner: Type[Base]) -> FieldAttrDescriptor[T]:
         impl = self.impl.get(owner)
         if impl is None:
-            impl = self.impl[owner] = self.impl_type(owner, self)
+            impl = self.impl[owner] = FieldAttrDescriptor(owner, self)
         return impl
 
     def __set_name__(self, owner: Type[Base], name: str) -> None:
-        owner._fields[name] = self
+        owner.__fields__[name] = self
         self.attr_name = name
         if not hasattr(self, "name"):
             self.name = name
 
     @overload
-    def __get__(self, inst: Base, owner: Type[Base]) -> T_Value:
+    def __get__(self, inst: Base, owner: Type[Base]) -> T:
         ...
 
     @overload
-    def __get__(self, inst: None, owner: Type[Base]) -> T_Impl:
+    def __get__(self, inst: None, owner: Type[Base]) -> FieldAttrDescriptor[T]:
         ...
 
     def __get__(
         self, inst: Optional[Base], owner: Type[Base]
-    ) -> Union[None, T_Value, T_Impl]:
+    ) -> Union[None, T, FieldAttrDescriptor[T]]:
         impl = self.get_impl(owner)
         if inst is None:
             return impl
 
-        value = inst._data.get(self.name, NO_VALUE)
+        value = inst.__data__.get(self.name, NO_VALUE)
         if value is not NO_VALUE:
-            return cast(Optional[T_Value], impl.to_python(value))
+            return cast(Optional[T], value)
 
-        if self.default is not None:
-            value = self.default()
-            self.__set__(inst, value)
-            return cast(Optional[T_Value], impl.from_python(inst._data[self.name]))
+        value = inst.__data__[self.name] = self.default()
+        return cast(Optional[T], value)
 
-        if self.nullable:
-            return None
-        raise NotImplementedError
-
-    def __set__(self, inst: Base, value: T_Value) -> None:
-        if self.nullable and value is None:
-            inst._data[self.name] = value
-        else:
-            impl = self.get_impl(type(inst))
-            inst._data[self.name] = impl.from_python(value)
+    def __set__(self, inst: Base, value: T) -> None:
+        inst.__data__[self.name] = value
 
 
-class NullableFieldAttr(FieldAttr[Optional[T_Value], T_Impl]):
-    nullable = True
+class NullableFieldAttr(FieldAttr[Optional[T]]):
+    def default(self) -> Optional[T]:
+        return None
