@@ -1,0 +1,5 @@
+.mypy_cache
+.env
+*.egg-info
+.idea
+__pycache__
