@@ -97,20 +97,24 @@ class FieldAttr(Generic[T]):
     descriptors: WeakKeyDictionary[Type[Base], FieldAttrDescriptor[T]]
     name: str
     attr_name: str
+    primary_key: bool
 
     def __init__(
         self,
         *,
-        default: Optional[Callable[[], T]] = None,
         name: Optional[str] = None,
+        default: Optional[Callable[[], T]] = None,
+        primary_key: bool = False,
     ):
         self.descriptors = WeakKeyDictionary()
+
+        if name is not None:
+            self.name = name
 
         if default is not None:
             setattr(self, "default", default)
 
-        if name is not None:
-            self.name = name
+        self.primary_key = primary_key
 
     def default(self) -> T:
         raise NotImplementedError
