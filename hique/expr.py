@@ -1,14 +1,20 @@
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, Type
+
+if TYPE_CHECKING:
+    from hique.base import Base
 
 
 class Expr:
     op: str = ""
     __alias__: Optional[str] = None
 
-    def alias(self, alias: str) -> Expr:
-        self.__alias__ = alias
+    def alias(self, alias: str, *, table: Optional[Type[Base]] = None) -> Expr:
+        if table is not None:
+            self.__alias__ = f"{table.__alias__}.{alias}"
+        else:
+            self.__alias__ = alias
         return self
 
     def __lt__(self, other: Any) -> BinOpExpr:
