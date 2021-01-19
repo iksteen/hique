@@ -28,8 +28,39 @@ class PostgresqlQueryBuilder:
         raise NotImplementedError
 
     def select(self, query: SelectQuery, args: Args) -> str:
-        where = [self.expr(f, args) for f in query._filter]
-        return f"SELECT * FROM ... WHERE {' AND '.join(where)}"
+        values = []
+        for value in query._values:
+            alias: Optional[str]
+            if isinstance(value, FieldAttrDescriptor):
+                alias = f"{value.table.__alias__ or value.table.__table_name__}.{value.__alias__ or value.field.name}"
+            else:
+                alias = value.__alias__ or None
+            if alias is None:
+                values.append(f"{self.expr(value, args)}")
+            else:
+                values.append(f"{self.expr(value, args)} AS {self.quote(alias)}")
+
+        if query._from:
+            froms = []
+            for from_entry in query._from:
+                if from_entry.__alias__ is not None:
+                    froms.append(
+                        f"{from_entry.__table_name__} AS {from_entry.__alias__}"
+                    )
+                else:
+                    froms.append(f"{from_entry.__table_name__}")
+            from_ = f" FROM {', '.join(froms)}"
+        else:
+            from_ = ""
+
+        if query._filter:
+            where = (
+                f" WHERE {' AND '.join([self.expr(f, args) for f in query._filter])}"
+            )
+        else:
+            where = ""
+
+        return f"SELECT {', '.join(values)}{from_}{where}"
 
     def expr(self, expr: Any, args: Args) -> str:
         for t in type(expr).mro():
