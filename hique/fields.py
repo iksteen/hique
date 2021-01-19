@@ -1,7 +1,8 @@
 import datetime
 import decimal
+import ipaddress
 import uuid
-from typing import Any
+from typing import Any, Union
 
 from hique.base import FieldAttr, NullableFieldAttr
 
@@ -30,6 +31,14 @@ class NullableBooleanField(NullableFieldAttr[bool]):
     pass
 
 
+class ByteaField(FieldAttr[bytes]):
+    pass
+
+
+class NullableByteaField(FieldAttr[bytes]):
+    pass
+
+
 class CharacterField(FieldAttr[str]):
     pass
 
@@ -46,6 +55,16 @@ class NullableCharacterVaryingField(NullableFieldAttr[str]):
     pass
 
 
+class CidrField(FieldAttr[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]]):
+    pass
+
+
+class NullableCidrField(
+    NullableFieldAttr[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]]
+):
+    pass
+
+
 class DateField(FieldAttr[datetime.date]):
     pass
 
@@ -59,6 +78,16 @@ class DoublePrecisionField(FieldAttr[float]):
 
 
 class NullableDoublePrecisionField(NullableFieldAttr[float]):
+    pass
+
+
+class InetField(FieldAttr[Union[ipaddress.IPv4Address, ipaddress.IPv6Address]]):
+    pass
+
+
+class NullableInetField(
+    NullableFieldAttr[Union[ipaddress.IPv4Address, ipaddress.IPv6Address]]
+):
     pass
 
 
