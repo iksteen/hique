@@ -21,10 +21,10 @@ class Args:
 
 
 class PostgresqlQueryBuilder:
-    def __call__(self, query: Query) -> Tuple[str, Args]:
+    def __call__(self, query: Query) -> Tuple[str, List[Any]]:
         args = Args()
         if isinstance(query, SelectQuery):
-            return self.select(query, args), args
+            return self.select(query, args), args.args
         raise NotImplementedError
 
     def select(self, query: SelectQuery, args: Args) -> str:
@@ -41,14 +41,17 @@ class PostgresqlQueryBuilder:
                 values.append(f"{self.expr(value, args)} AS {self.quote(alias)}")
 
         if query._from:
+            from_set = set()
             froms = []
             for from_entry in query._from:
-                if from_entry.__alias__ is not None:
-                    froms.append(
-                        f"{from_entry.__table_name__} AS {from_entry.__alias__}"
-                    )
-                else:
-                    froms.append(f"{from_entry.__table_name__}")
+                from_table = from_entry.__table_name__
+                from_alias = from_entry.__alias__ or from_entry.__table_name__
+                if (from_table, from_alias) not in from_set:
+                    from_set.add((from_table, from_alias))
+                    if from_table != from_alias:
+                        froms.append(f"{from_table} AS {from_alias}")
+                    else:
+                        froms.append(from_table)
             from_ = f" FROM {', '.join(froms)}"
         else:
             from_ = ""
@@ -135,7 +138,7 @@ class PostgresqlQueryBuilder:
     ] = {
         "lt": partial(emit_infix_op, infix=" < "),
         "le": partial(emit_infix_op, infix=" <= "),
-        "eq": partial(emit_infix_op, infix=" == "),
+        "eq": partial(emit_infix_op, infix=" = "),
         "ne": partial(emit_infix_op, infix=" != "),
         "gt": partial(emit_infix_op, infix=" > "),
         "ge": partial(emit_infix_op, infix=" >= "),
