@@ -50,8 +50,8 @@ class Base(metaclass=BaseMeta):
         cls = type(self)
 
         for key, value in kwargs.items():
-            field_impl = getattr(cls, key, None)
-            if not isinstance(field_impl, FieldAttrDescriptor):
+            descriptor = getattr(cls, key, None)
+            if not isinstance(descriptor, FieldAttrDescriptor):
                 raise KeyError(f"{key} is not a field")
             setattr(self, key, value)
 
@@ -62,7 +62,10 @@ class Base(metaclass=BaseMeta):
         return self.__alias__ or self.__table_name__
 
 
-def alias(cls: Type[Base], name: str) -> Type[Base]:
+T_Base = TypeVar("T_Base", bound=Base)
+
+
+def alias(cls: Type[T_Base], name: str) -> Type[T_Base]:
     return type(
         f"{cls.__name__}:{name}",
         (cls,),
@@ -74,6 +77,8 @@ T = TypeVar("T")
 
 
 class FieldAttrDescriptor(Generic[T], Expr):
+    op = "field"
+
     def __init__(self, table: Type[Base], field: FieldAttr[Any]) -> None:
         self.table = table
         self.field = field
@@ -89,7 +94,7 @@ NO_VALUE = object()
 
 
 class FieldAttr(Generic[T]):
-    impl: WeakKeyDictionary[Type[Base], FieldAttrDescriptor[T]]
+    descriptors: WeakKeyDictionary[Type[Base], FieldAttrDescriptor[T]]
     name: str
     attr_name: str
 
@@ -99,7 +104,7 @@ class FieldAttr(Generic[T]):
         default: Optional[Callable[[], T]] = None,
         name: Optional[str] = None,
     ):
-        self.impl = WeakKeyDictionary()
+        self.descriptors = WeakKeyDictionary()
 
         if default is not None:
             setattr(self, "default", default)
@@ -109,12 +114,6 @@ class FieldAttr(Generic[T]):
 
     def default(self) -> T:
         raise NotImplementedError
-
-    def get_impl(self, owner: Type[Base]) -> FieldAttrDescriptor[T]:
-        impl = self.impl.get(owner)
-        if impl is None:
-            impl = self.impl[owner] = FieldAttrDescriptor(owner, self)
-        return impl
 
     def __set_name__(self, owner: Type[Base], name: str) -> None:
         owner.__fields__[name] = self
@@ -133,9 +132,11 @@ class FieldAttr(Generic[T]):
     def __get__(
         self, inst: Optional[Base], owner: Type[Base]
     ) -> Union[None, T, FieldAttrDescriptor[T]]:
-        impl = self.get_impl(owner)
         if inst is None:
-            return impl
+            descriptor = self.descriptors.get(owner)
+            if descriptor is None:
+                descriptor = self.descriptors[owner] = FieldAttrDescriptor(owner, self)
+            return descriptor
 
         value = inst.__data__.get(self.name, NO_VALUE)
         if value is not NO_VALUE:
