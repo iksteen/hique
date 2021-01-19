@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import List, Any, Tuple, Optional, cast, Dict, Callable
+from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 
 from hique.base import FieldImplBase
+from hique.expr import BinOpExpr, CallExpr, Expr, Literal, UnOpExpr
 from hique.query import Query, SelectQuery
-from hique.expr import UnOpExpr, BinOpExpr, CallExpr, Expr, Literal
 
 
 class Args:
@@ -28,10 +28,7 @@ class PostgresqlQueryBuilder:
         raise NotImplementedError
 
     def select(self, query: SelectQuery, args: Args) -> str:
-        where = [
-            self.expr(f, args)
-            for f in query._filter
-        ]
+        where = [self.expr(f, args) for f in query._filter]
         return f"SELECT * FROM ... WHERE {' AND '.join(where)}"
 
     def expr(self, expr: Any, args: Args) -> str:
@@ -43,10 +40,7 @@ class PostgresqlQueryBuilder:
             raise NotImplementedError(type(expr))
 
     def quote(self, *parts: Optional[str]) -> str:
-        return ".".join(
-            f'"{part}"'
-            for part in parts
-        )
+        return ".".join(f'"{part}"' for part in parts)
 
     def emit_arg(self, value: object, args: Args) -> str:
         return f"${args(value)}"
@@ -94,14 +88,18 @@ class PostgresqlQueryBuilder:
         BinOpExpr: emit_bin_op,
         CallExpr: emit_call,
     }
-    un_op_expr_map: Dict[str, Callable[[PostgresqlQueryBuilder, UnOpExpr, Args], str]] = {
+    un_op_expr_map: Dict[
+        str, Callable[[PostgresqlQueryBuilder, UnOpExpr, Args], str]
+    ] = {
         "neg": partial(emit_prefix_op, prefix="-"),
         "pos": partial(emit_prefix_op, prefix="+"),
         "abs": lambda self, e, a: self.emit_call(CallExpr("abs", e.value), a),
         "is_null": partial(emit_postfix_op, postfix=" IS NULL"),
         "is_not_null": partial(emit_postfix_op, postfix=" IS NOT NULL"),
     }
-    bin_op_expr_map: Dict[str, Callable[[PostgresqlQueryBuilder, BinOpExpr, Args], str]] = {
+    bin_op_expr_map: Dict[
+        str, Callable[[PostgresqlQueryBuilder, BinOpExpr, Args], str]
+    ] = {
         "lt": partial(emit_infix_op, infix=" < "),
         "le": partial(emit_infix_op, infix=" <= "),
         "eq": partial(emit_infix_op, infix=" == "),

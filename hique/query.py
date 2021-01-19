@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import reduce
-from typing import List, Any, Type
+from typing import Any, List, Type
 
 from hique.base import Base
 from hique.expr import Expr

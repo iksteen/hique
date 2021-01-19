@@ -1,6 +1,6 @@
 from typing import Any, Optional
 
-from hique.base import FieldImplBase, FieldAttr, NullableFieldAttr
+from hique.base import FieldAttr, FieldImplBase, NullableFieldAttr
 
 
 class TextFieldImpl(FieldImplBase[str]):

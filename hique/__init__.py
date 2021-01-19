@@ -1,9 +1,8 @@
-from hique.expr import Literal, FuncFactory, fn
 from hique.base import Base, alias
-from hique.fields import TextField, NullableTextField
-from hique.query import SelectQuery, select
+from hique.expr import FuncFactory, Literal, fn
+from hique.fields import NullableTextField, TextField
 from hique.pgbuilder import PostgresqlQueryBuilder
-
+from hique.query import SelectQuery, select
 
 __all__ = [
     "Literal",

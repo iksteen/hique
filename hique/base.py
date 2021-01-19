@@ -1,13 +1,28 @@
 from __future__ import annotations
 
-from typing import ClassVar, Optional, Dict, Any, Type, TypeVar, Generic, Callable, overload, Union, cast, Tuple
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    Generic,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 from weakref import WeakKeyDictionary
 
 from hique.expr import Expr
 
 
 class BaseMeta(type):
-    def __new__(mcs: Type[BaseMeta], name: str, bases: Tuple[type, ...], attr: Dict[str, Any]) -> BaseMeta:
+    def __new__(
+        mcs: Type[BaseMeta], name: str, bases: Tuple[type, ...], attr: Dict[str, Any]
+    ) -> BaseMeta:
         # Set up default table name.
         if "__table_name__" not in attr:
             attr["__table_name__"] = name.lower()
@@ -58,7 +73,11 @@ class Base(metaclass=BaseMeta):
 
 
 def alias(cls: Type[Base], name: str) -> Type[Base]:
-    return type(f"{cls.__name__}:{name}", (cls,), {"__table_name__": cls.__table_name__, "_alias": name})
+    return type(
+        f"{cls.__name__}:{name}",
+        (cls,),
+        {"__table_name__": cls.__table_name__, "_alias": name},
+    )
 
 
 T = TypeVar("T")
@@ -79,29 +98,34 @@ class FieldImplBase(Generic[T], Expr):
         return self.field.name
 
     def __repr__(self) -> str:
-        return f'{self.table()!r}.{self.field.name}'
+        return f"{self.table()!r}.{self.field.name}"
 
 
-V = TypeVar("V")
-I = TypeVar("I", bound=FieldImplBase[Any])
+T_Value = TypeVar("T_Value")
+T_Impl = TypeVar("T_Impl", bound=FieldImplBase[Any])
 NO_VALUE = object()
 
 
-class FieldAttr(Generic[V, I]):
-    impl_type: Type[I]
-    impl: WeakKeyDictionary[Type[Base], I]
+class FieldAttr(Generic[T_Value, T_Impl]):
+    impl_type: Type[T_Impl]
+    impl: WeakKeyDictionary[Type[Base], T_Impl]
     nullable = False
-    default: Optional[Callable[[], V]]
+    default: Optional[Callable[[], T_Value]]
     name: str
     attr_name: str
 
-    def __init__(self, *, default: Optional[Callable[[], V]] = None, name: Optional[str] = None):
+    def __init__(
+        self,
+        *,
+        default: Optional[Callable[[], T_Value]] = None,
+        name: Optional[str] = None,
+    ):
         self.impl = WeakKeyDictionary()
         self.default = default
         if name is not None:
             self.name = name
 
-    def get_impl(self, owner: Type[Base]) -> I:
+    def get_impl(self, owner: Type[Base]) -> T_Impl:
         impl = self.impl.get(owner)
         if impl is None:
             impl = self.impl[owner] = self.impl_type(owner, self)
@@ -114,32 +138,34 @@ class FieldAttr(Generic[V, I]):
             self.name = name
 
     @overload
-    def __get__(self, inst: Base, owner: Type[Base]) -> V:
+    def __get__(self, inst: Base, owner: Type[Base]) -> T_Value:
         ...
 
     @overload
-    def __get__(self, inst: None, owner: Type[Base]) -> I:
+    def __get__(self, inst: None, owner: Type[Base]) -> T_Impl:
         ...
 
-    def __get__(self, inst: Optional[Base], owner: Type[Base]) -> Union[None, V, I]:
+    def __get__(
+        self, inst: Optional[Base], owner: Type[Base]
+    ) -> Union[None, T_Value, T_Impl]:
         impl = self.get_impl(owner)
         if inst is None:
             return impl
 
         value = inst._data.get(self.name, NO_VALUE)
         if value is not NO_VALUE:
-            return cast(Optional[V], impl.to_python(value))
+            return cast(Optional[T_Value], impl.to_python(value))
 
         if self.default is not None:
             value = self.default()
             self.__set__(inst, value)
-            return cast(Optional[V], impl.from_python(inst._data[self.name]))
+            return cast(Optional[T_Value], impl.from_python(inst._data[self.name]))
 
         if self.nullable:
             return None
         raise NotImplementedError
 
-    def __set__(self, inst: Base, value: V) -> None:
+    def __set__(self, inst: Base, value: T_Value) -> None:
         if self.nullable and value is None:
             inst._data[self.name] = value
         else:
@@ -147,5 +173,5 @@ class FieldAttr(Generic[V, I]):
             inst._data[self.name] = impl.from_python(value)
 
 
-class NullableFieldAttr(FieldAttr[Optional[V], I]):
+class NullableFieldAttr(FieldAttr[Optional[T_Value], T_Impl]):
     nullable = True
