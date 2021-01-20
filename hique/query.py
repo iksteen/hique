@@ -38,12 +38,13 @@ def select(*values: Union[Expr, Type[Model]]) -> SelectQuery:
     from_: List[Type[Model]] = []
     for value in values:
         if isinstance(value, Expr):
-            if isinstance(value, FieldAttrDescriptor):
+            if isinstance(value, FieldAttrDescriptor) and value.table not in from_:
                 from_.append(value.table)
             values_.append(value)
             continue
 
-        from_.append(value)
+        if value not in from_:
+            from_.append(value)
         for field in value.__fields__.keys():
             values_.append(getattr(value, field))
 
