@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Type
+from typing import TYPE_CHECKING, Any, Optional, Sequence, Type
 
 if TYPE_CHECKING:
     from hique.base import Model
@@ -8,7 +8,12 @@ if TYPE_CHECKING:
 
 class Expr:
     op: str = ""
+    args: Sequence[Any] = ()
     __alias__: Optional[str] = None
+
+    def __init__(self, op: str, *args: Any) -> None:
+        self.op = op
+        self.args = args
 
     def alias(self, alias: str, *, table: Optional[Type[Model]] = None) -> Expr:
         if table is not None:
@@ -17,94 +22,77 @@ class Expr:
             self.__alias__ = alias
         return self
 
-    def __lt__(self, other: Any) -> BinOpExpr:
-        return BinOpExpr("lt", self, other)
+    def __lt__(self, other: Any) -> Expr:
+        return Expr("lt", self, other)
 
-    def __le__(self, other: Any) -> BinOpExpr:
-        return BinOpExpr("le", self, other)
+    def __le__(self, other: Any) -> Expr:
+        return Expr("le", self, other)
 
-    def __eq__(self, other: Any) -> BinOpExpr:  # type: ignore
-        return BinOpExpr("eq", self, other)
+    def __eq__(self, other: Any) -> Expr:  # type: ignore
+        return Expr("eq", self, other)
 
-    def __ne__(self, other: Any) -> BinOpExpr:  # type: ignore
-        return BinOpExpr("ne", self, other)
+    def __ne__(self, other: Any) -> Expr:  # type: ignore
+        return Expr("ne", self, other)
 
-    def __gt__(self, other: Any) -> BinOpExpr:
-        return BinOpExpr("gt", self, other)
+    def __gt__(self, other: Any) -> Expr:
+        return Expr("gt", self, other)
 
-    def __ge__(self, other: Any) -> BinOpExpr:
-        return BinOpExpr("ge", self, other)
+    def __ge__(self, other: Any) -> Expr:
+        return Expr("ge", self, other)
 
-    def __neg__(self) -> UnOpExpr:
-        return UnOpExpr("neg", self)
+    def __neg__(self) -> Expr:
+        return Expr("neg", self)
 
-    def __pos__(self) -> UnOpExpr:
-        return UnOpExpr("pos", self)
+    def __pos__(self) -> Expr:
+        return Expr("pos", self)
 
-    def __abs__(self) -> UnOpExpr:
-        return UnOpExpr("abs", self)
+    def __abs__(self) -> Expr:
+        return Expr("abs", self)
 
-    def __invert__(self) -> UnOpExpr:
-        return UnOpExpr("invert", self)
+    def __invert__(self) -> Expr:
+        return Expr("invert", self)
 
-    def __and__(self, other: Any) -> BinOpExpr:
-        return BinOpExpr("and", self, other)
+    def __and__(self, other: Any) -> Expr:
+        return Expr("and", self, other)
 
-    def __or__(self, other: Any) -> BinOpExpr:
-        return BinOpExpr("or", self, other)
+    def __or__(self, other: Any) -> Expr:
+        return Expr("or", self, other)
 
-    def __add__(self, other: Any) -> BinOpExpr:
-        return BinOpExpr("add", self, other)
+    def __add__(self, other: Any) -> Expr:
+        return Expr("add", self, other)
 
-    def __sub__(self, other: Any) -> BinOpExpr:
-        return BinOpExpr("sub", self, other)
+    def __sub__(self, other: Any) -> Expr:
+        return Expr("sub", self, other)
 
-    def is_null(self) -> UnOpExpr:
-        return UnOpExpr("is_null", self)
+    def is_null(self) -> Expr:
+        return Expr("is_null", self)
 
-    def is_not_null(self) -> UnOpExpr:
-        return UnOpExpr("is_not_null", self)
+    def is_not_null(self) -> Expr:
+        return Expr("is_not_null", self)
+
+    def __repr__(self) -> str:
+        return f"{self.op}({', '.join(map(repr, self.args))})"
 
 
 class Literal(Expr):
     def __init__(self, value: str) -> None:
-        self.value = value
+        super().__init__("literal", value)
 
     def __repr__(self) -> str:
-        return self.value
-
-
-class UnOpExpr(Expr):
-    def __init__(self, op: str, value: Any) -> None:
-        self.op = op
-        self.value = value
-
-    def __repr__(self) -> str:
-        return f"({self.op} {self.value})"
-
-
-class BinOpExpr(Expr):
-    def __init__(self, op: str, left: Any, right: Any) -> None:
-        self.op = op
-        self.left = left
-        self.right = right
-
-    def __repr__(self) -> str:
-        return f"({self.left!r} {self.op} {self.right!r})"
+        return str(self.args[0])
 
 
 class CallExpr(Expr):
     def __init__(self, name: str, *args: Any, schema: Optional[str] = None) -> None:
-        self.schema = schema
-        self.name = name
-        self.args = args
+        super().__init__("call", schema, name, args)
 
     def __repr__(self) -> str:
-        if self.schema:
-            f = f"{self.schema}.{self.name}"
+        schema, name, *args = self.args
+        if schema:
+            f = f"{schema}.{name}"
         else:
-            f = self.name
-        return f"{f}({', '.join(map(repr, self.args))})"
+            f = name
+        return f"{f}({', '.join(map(repr, args))})"
 
 
 class FuncProxy:
