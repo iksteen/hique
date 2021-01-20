@@ -96,7 +96,7 @@ class PostgresqlQueryBuilder:
         return f"{f}({', '.join([self.emit(e, args) for e in expr.args])})"
 
     def emit_infix_op(self, expr: Expr, args: Args, *, infix: str) -> str:
-        return infix.join(self.emit(arg, args) for arg in expr.args)
+        return f"({infix.join(self.emit(arg, args) for arg in expr.args)})"
 
     def emit_prefix_op(self, expr: Expr, args: Args, *, prefix: str) -> str:
         return f"{prefix}{expr.args[0]}"
