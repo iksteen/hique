@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from hique.base import FieldAttrDescriptor
-from hique.expr import CallExpr, Expr
+from hique.expr import Expr
 from hique.query import Query, SelectQuery
 
 
@@ -87,13 +87,23 @@ class PostgresqlQueryBuilder:
         assert isinstance(expr, FieldAttrDescriptor)
         return self.dot_quote(expr.table.__alias__, expr.field.name)
 
-    def emit_call(self, expr: Expr, args: Args) -> str:
-        schema, name, *a = expr.args
+    def emit_call(
+        self,
+        name: str,
+        call_args: Sequence[Any],
+        args: Args,
+        *,
+        schema: Optional[str] = None,
+    ) -> str:
         if schema is not None:
             f = f"{schema}.{name}"
         else:
             f = name
-        return f"{f}({', '.join([self.emit(e, args) for e in expr.args])})"
+        return f"{f}({', '.join([self.emit(e, args) for e in call_args])})"
+
+    def emit_call_expr(self, expr: Expr, args: Args) -> str:
+        schema, name, *call_args = expr.args
+        return self.emit_call(name, call_args, args, schema=schema)
 
     def emit_infix_op(self, expr: Expr, args: Args, *, infix: str) -> str:
         return f"({infix.join(self.emit(arg, args) for arg in expr.args)})"
@@ -104,23 +114,40 @@ class PostgresqlQueryBuilder:
     def emit_postfix_op(self, expr: Expr, args: Args, *, postfix: str) -> str:
         return f"{self.emit(expr.args[0], args)}{postfix}"
 
+    def not_implemented(self, expr: Expr, args: Args) -> str:
+        raise NotImplementedError(expr)
+
     expr_emitter_map: Dict[str, Callable[[PostgresqlQueryBuilder, Expr, Args], str]] = {
         "literal": lambda s, e, a: str(e.args[0]),
         "field": emit_field,
-        "neg": partial(emit_prefix_op, prefix="-"),
-        "pos": partial(emit_prefix_op, prefix="+"),
-        "abs": lambda self, e, a: self.emit(CallExpr("abs", e.args[0]), a),
-        "is_null": partial(emit_postfix_op, postfix=" IS NULL"),
-        "is_not_null": partial(emit_postfix_op, postfix=" IS NOT NULL"),
         "lt": partial(emit_infix_op, infix=" < "),
         "le": partial(emit_infix_op, infix=" <= "),
         "eq": partial(emit_infix_op, infix=" = "),
         "ne": partial(emit_infix_op, infix=" != "),
         "gt": partial(emit_infix_op, infix=" > "),
         "ge": partial(emit_infix_op, infix=" >= "),
-        "or": partial(emit_infix_op, infix=" OR "),
-        "and": partial(emit_infix_op, infix=" AND "),
+        "neg": partial(emit_prefix_op, prefix="-"),
+        "pos": partial(emit_prefix_op, prefix="+"),
+        "abs": lambda self, e, a: self.emit_call("abs", e.args, a),
+        "invert": partial(emit_prefix_op, prefix="NOT "),
         "add": partial(emit_infix_op, infix=" + "),
         "sub": partial(emit_infix_op, infix=" - "),
-        "call": emit_call,
+        "mul": partial(emit_infix_op, infix=" * "),
+        "matmul": not_implemented,
+        "div": partial(emit_infix_op, infix=" / "),
+        "floordiv": lambda self, e, a: self.emit_call("div", e.args, a),
+        "mod": partial(emit_infix_op, infix=" % "),
+        "divmod": not_implemented,
+        "pow": lambda self, e, a: self.emit_call("power", e.args, a),
+        "lshift": partial(emit_infix_op, infix=" << "),
+        "rshift": partial(emit_infix_op, infix=" >> "),
+        "and": partial(emit_infix_op, infix=" AND "),
+        "xor": partial(emit_infix_op, infix=" # "),
+        "or": partial(emit_infix_op, infix=" OR "),
+        "round": lambda self, e, a: self.emit_call("round", e.args, a),
+        "floor": lambda self, e, a: self.emit_call("floor", e.args, a),
+        "ceil": lambda self, e, a: self.emit_call("ceil", e.args, a),
+        "is_null": partial(emit_postfix_op, postfix=" IS NULL"),
+        "is_not_null": partial(emit_postfix_op, postfix=" IS NOT NULL"),
+        "call": emit_call_expr,
     }
