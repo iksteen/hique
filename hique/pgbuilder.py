@@ -65,10 +65,10 @@ class PostgresqlQueryBuilder:
             from_set = set()
             froms = []
             for from_entry in query._from:
-                from_table = from_entry.__table_name__
-                from_alias = from_entry.__alias__
-                if (from_table, from_alias) not in from_set:
-                    from_set.add((from_table, from_alias))
+                if from_entry not in from_set:
+                    from_table = self.dot_quote(from_entry.__table_name__)
+                    from_alias = self.dot_quote(from_entry.__alias__)
+                    from_set.add(from_entry)
                     if from_table != from_alias:
                         froms.append(f"{from_table} AS {from_alias}")
                     else:
