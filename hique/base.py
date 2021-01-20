@@ -19,10 +19,10 @@ from weakref import WeakKeyDictionary
 from hique.expr import Expr
 
 
-class BaseMeta(type):
+class ModelMeta(type):
     def __new__(
-        mcs: Type[BaseMeta], name: str, bases: Tuple[type, ...], attr: Dict[str, Any]
-    ) -> BaseMeta:
+        mcs: Type[ModelMeta], name: str, bases: Tuple[type, ...], attr: Dict[str, Any]
+    ) -> ModelMeta:
         # Set up default table name.
         if "__table_name__" not in attr:
             attr["__table_name__"] = name.lower()
@@ -33,14 +33,14 @@ class BaseMeta(type):
         # Clone fields so fields of the subclass don't end up in the superclass.
         _fields = {}
         for base in bases:
-            if issubclass(base, Base):
+            if issubclass(base, Model):
                 _fields.update(base.__fields__)
         attr["__fields__"] = _fields
 
-        return cast(BaseMeta, super(BaseMeta, mcs).__new__(mcs, name, bases, attr))
+        return cast(ModelMeta, super(ModelMeta, mcs).__new__(mcs, name, bases, attr))
 
 
-class Base(metaclass=BaseMeta):
+class Model(metaclass=ModelMeta):
     __table_name__: ClassVar[str]
     __alias__: ClassVar[str]
     __fields__: ClassVar[Dict[str, FieldAttr[Any]]] = {}
@@ -65,10 +65,10 @@ class Base(metaclass=BaseMeta):
         return self.__alias__
 
 
-T_Base = TypeVar("T_Base", bound=Base)
+T_Model = TypeVar("T_Model", bound=Model)
 
 
-def alias(cls: Type[T_Base], name: str) -> Type[T_Base]:
+def alias(cls: Type[T_Model], name: str) -> Type[T_Model]:
     return type(
         f"{cls.__name__}:{name}",
         (cls,),
@@ -82,7 +82,7 @@ T = TypeVar("T")
 class FieldAttrDescriptor(Generic[T], Expr):
     op = "field"
 
-    def __init__(self, table: Type[Base], field: FieldAttr[Any]) -> None:
+    def __init__(self, table: Type[Model], field: FieldAttr[Any]) -> None:
         self.table = table
         self.field = field
 
@@ -97,7 +97,7 @@ NO_VALUE = object()
 
 
 class FieldAttr(Generic[T]):
-    descriptors: WeakKeyDictionary[Type[Base], FieldAttrDescriptor[T]]
+    descriptors: WeakKeyDictionary[Type[Model], FieldAttrDescriptor[T]]
     name: str
     attr_name: str
     primary_key: bool
@@ -122,22 +122,22 @@ class FieldAttr(Generic[T]):
     def default(self) -> T:
         raise NotImplementedError
 
-    def __set_name__(self, owner: Type[Base], name: str) -> None:
+    def __set_name__(self, owner: Type[Model], name: str) -> None:
         owner.__fields__[name] = self
         self.attr_name = name
         if not hasattr(self, "name"):
             self.name = name
 
     @overload
-    def __get__(self, inst: Base, owner: Type[Base]) -> T:
+    def __get__(self, inst: Model, owner: Type[Model]) -> T:
         ...
 
     @overload
-    def __get__(self, inst: None, owner: Type[Base]) -> FieldAttrDescriptor[T]:
+    def __get__(self, inst: None, owner: Type[Model]) -> FieldAttrDescriptor[T]:
         ...
 
     def __get__(
-        self, inst: Optional[Base], owner: Type[Base]
+        self, inst: Optional[Model], owner: Type[Model]
     ) -> Union[None, T, FieldAttrDescriptor[T]]:
         if inst is None:
             descriptor = self.descriptors.get(owner)
@@ -152,7 +152,7 @@ class FieldAttr(Generic[T]):
         value = inst.__data__[self.name] = self.default()
         return cast(Optional[T], value)
 
-    def __set__(self, inst: Base, value: T) -> None:
+    def __set__(self, inst: Model, value: T) -> None:
         inst.__data__[self.name] = value
 
 

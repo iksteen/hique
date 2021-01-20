@@ -1,4 +1,4 @@
-from hique.base import Base, alias
+from hique.base import Model, alias
 from hique.expr import FuncFactory, Literal, fn
 from hique.fields import (
     BigIntField,
@@ -52,7 +52,7 @@ from hique.pgbuilder import PostgresqlQueryBuilder
 from hique.query import SelectQuery, select
 
 __all__ = [
-    "Base",
+    "Model",
     "alias",
     "FuncFactory",
     "Literal",

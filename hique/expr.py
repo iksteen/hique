@@ -3,14 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional, Type
 
 if TYPE_CHECKING:
-    from hique.base import Base
+    from hique.base import Model
 
 
 class Expr:
     op: str = ""
     __alias__: Optional[str] = None
 
-    def alias(self, alias: str, *, table: Optional[Type[Base]] = None) -> Expr:
+    def alias(self, alias: str, *, table: Optional[Type[Model]] = None) -> Expr:
         if table is not None:
             self.__alias__ = f"{table.__alias__}.{alias}"
         else:

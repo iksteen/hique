@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import reduce
 from typing import Any, List, Type, Union
 
-from hique.base import Base, FieldAttrDescriptor
+from hique.base import FieldAttrDescriptor, Model
 from hique.expr import Expr
 
 
@@ -18,7 +18,7 @@ class SelectQuery(Query):
         self._from: List[Any] = []
         self._filter: List[Expr] = []
 
-    def from_(self, *sources: Type[Base], replace: bool = False) -> SelectQuery:
+    def from_(self, *sources: Type[Model], replace: bool = False) -> SelectQuery:
         if replace:
             self._from.clear()
         self._from.extend(sources)
@@ -33,9 +33,9 @@ class SelectQuery(Query):
         return f"SELECT * FROM {','.join(f.__table_name__ for f in self._from)} WHERE {filter}"
 
 
-def select(*values: Union[Expr, Type[Base]]) -> SelectQuery:
+def select(*values: Union[Expr, Type[Model]]) -> SelectQuery:
     values_: List[Expr] = []
-    from_: List[Type[Base]] = []
+    from_: List[Type[Model]] = []
     for value in values:
         if isinstance(value, Expr):
             if isinstance(value, FieldAttrDescriptor):
