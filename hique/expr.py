@@ -171,15 +171,16 @@ class Literal(Expr):
 
 class CallExpr(Expr):
     def __init__(self, name: str, *args: Any, schema: Optional[str] = None) -> None:
-        super().__init__("call", schema, name, args)
+        super().__init__("call", args)
+        self.schema = schema
+        self.name = name
 
     def __repr__(self) -> str:
-        schema, name, *args = self.args
-        if schema is not None:
-            f = f"{schema}.{name}"
+        if self.schema is not None:
+            f = f"{self.schema}.{self.name}"
         else:
-            f = name
-        return f"{f}({', '.join(map(repr, args))})"
+            f = self.name
+        return f"{f}({', '.join(map(repr, self.args))})"
 
 
 class FuncProxy:

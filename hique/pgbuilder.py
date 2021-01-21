@@ -4,7 +4,7 @@ from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 from hique.base import FieldAttrDescriptor
-from hique.expr import Expr
+from hique.expr import CallExpr, Expr
 from hique.query import Query, SelectQuery
 
 
@@ -119,11 +119,10 @@ class PostgresqlQueryBuilder:
 
     def emit_call(
         self,
+        schema: Optional[str],
         name: str,
         call_args: Sequence[Any],
         args: Args,
-        *,
-        schema: Optional[str] = None,
     ) -> str:
         if schema is not None:
             f = f"{schema}.{name}"
@@ -132,8 +131,8 @@ class PostgresqlQueryBuilder:
         return f"{f}({', '.join([self.emit(e, args) for e in call_args])})"
 
     def emit_call_expr(self, expr: Expr, args: Args) -> str:
-        schema, name, call_args = expr.args
-        return self.emit_call(name, call_args, args, schema=schema)
+        assert isinstance(expr, CallExpr)
+        return self.emit_call(expr.schema, expr.name, expr.args, args)
 
     def emit_op(
         self,
@@ -170,25 +169,25 @@ class PostgresqlQueryBuilder:
         "ge": partial(emit_op, infix=" >= "),
         "neg": partial(emit_op, prefix="-"),
         "pos": partial(emit_op, prefix="+"),
-        "abs": lambda self, e, a: self.emit_call("abs", e.args, a),
+        "abs": lambda self, e, a: self.emit_call(None, "abs", e.args, a),
         "invert": partial(emit_op, prefix="NOT "),
         "add": partial(emit_op, infix=" + "),
         "sub": partial(emit_op, infix=" - "),
         "mul": partial(emit_op, infix=" * "),
         "matmul": not_implemented,
         "div": partial(emit_op, infix=" / "),
-        "floordiv": lambda self, e, a: self.emit_call("div", e.args, a),
+        "floordiv": lambda self, e, a: self.emit_call(None, "div", e.args, a),
         "mod": partial(emit_op, infix=" % "),
         "divmod": not_implemented,
-        "pow": lambda self, e, a: self.emit_call("power", e.args, a),
+        "pow": lambda self, e, a: self.emit_call(None, "power", e.args, a),
         "lshift": partial(emit_op, infix=" << "),
         "rshift": partial(emit_op, infix=" >> "),
         "and": partial(emit_op, infix=" AND "),
         "xor": partial(emit_op, infix=" # "),
         "or": partial(emit_op, infix=" OR "),
-        "round": lambda self, e, a: self.emit_call("round", e.args, a),
-        "floor": lambda self, e, a: self.emit_call("floor", e.args, a),
-        "ceil": lambda self, e, a: self.emit_call("ceil", e.args, a),
+        "round": lambda self, e, a: self.emit_call(None, "round", e.args, a),
+        "floor": lambda self, e, a: self.emit_call(None, "floor", e.args, a),
+        "ceil": lambda self, e, a: self.emit_call(None, "ceil", e.args, a),
         "is_null": partial(emit_op, suffix=" IS NULL"),
         "is_not_null": partial(emit_op, suffix=" IS NOT NULL"),
         "call": emit_call_expr,
