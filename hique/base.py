@@ -145,15 +145,15 @@ class FieldAttr(Generic[T]):
                 descriptor = self.descriptors[owner] = FieldAttrDescriptor(owner, self)
             return descriptor
 
-        value = inst.__data__.get(self.name, NO_VALUE)
+        value = inst.__data__.get(self.attr_name, NO_VALUE)
         if value is not NO_VALUE:
             return cast(Optional[T], value)
 
-        value = inst.__data__[self.name] = self.default()
+        value = inst.__data__[self.attr_name] = self.default()
         return cast(Optional[T], value)
 
     def __set__(self, inst: Model, value: T) -> None:
-        inst.__data__[self.name] = value
+        inst.__data__[self.attr_name] = value
 
 
 class NullableFieldAttr(FieldAttr[Optional[T]]):
