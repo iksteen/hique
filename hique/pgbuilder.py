@@ -59,15 +59,15 @@ class PostgresqlQueryBuilder:
             if alias is None:
                 values.append(f"{self.emit(value, args)}")
             else:
-                values.append(f"{self.emit(value, args)} AS {self.dot_quote(alias)}")
+                values.append(f"{self.emit(value, args)} AS {self.quote(alias)}")
 
         if query._from:
             from_set = set()
             froms = []
             for from_entry in query._from:
                 if from_entry not in from_set:
-                    from_table = self.dot_quote(from_entry.__table_name__)
-                    from_alias = self.dot_quote(from_entry.__alias__)
+                    from_table = self.quote(from_entry.__table_name__)
+                    from_alias = self.quote(from_entry.__alias__)
                     from_set.add(from_entry)
                     if from_table != from_alias:
                         froms.append(f"{from_table} AS {from_alias}")
@@ -95,8 +95,12 @@ class PostgresqlQueryBuilder:
             return self.precedence_map[None]
         return precedence
 
-    def dot_quote(self, *parts: Optional[str]) -> str:
-        return ".".join(f'"{part}"' for part in parts)
+    def quote(
+        self, *parts: Optional[str], delim: str = "", skip_none: bool = False
+    ) -> str:
+        return delim.join(
+            f'"{part}"' for part in parts if part is not None or not skip_none
+        )
 
     def emit(self, expr: Any, args: Args) -> str:
         if isinstance(expr, Expr):
@@ -115,7 +119,7 @@ class PostgresqlQueryBuilder:
 
     def emit_field(self, expr: Expr, args: Args) -> str:
         assert isinstance(expr, FieldAttrDescriptor)
-        return self.dot_quote(expr.table.__alias__, expr.field.name)
+        return self.quote(expr.table.__alias__, expr.field.name, delim=".")
 
     def emit_call(
         self,
