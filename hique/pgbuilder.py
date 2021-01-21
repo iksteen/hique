@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
-from hique.base import FieldAttrDescriptor
+from hique.base import FieldExpr
 from hique.expr import CallExpr, Expr
 from hique.query import Query, SelectQuery
 
@@ -52,8 +52,8 @@ class PostgresqlQueryBuilder:
         values = []
         for value in query._values:
             alias: Optional[str]
-            if isinstance(value, FieldAttrDescriptor):
-                alias = f"{value.table.__alias__}.{value.__alias__ or value.field.name}"
+            if isinstance(value, FieldExpr):
+                alias = f"{value.table.__alias__}.{value.__alias__ or value.descriptor.name}"
             else:
                 alias = value.__alias__ or None
             if alias is None:
@@ -118,8 +118,8 @@ class PostgresqlQueryBuilder:
         return f(self, expr, args)
 
     def emit_field(self, expr: Expr, args: Args) -> str:
-        assert isinstance(expr, FieldAttrDescriptor)
-        return self.quote(expr.table.__alias__, expr.field.name, delim=".")
+        assert isinstance(expr, FieldExpr)
+        return self.quote(expr.table.__alias__, expr.descriptor.name, delim=".")
 
     def emit_call(
         self,

@@ -43,7 +43,7 @@ class ModelMeta(type):
 class Model(metaclass=ModelMeta):
     __table_name__: ClassVar[str]
     __alias__: ClassVar[str]
-    __fields__: ClassVar[Dict[str, FieldAttr[Any]]] = {}
+    __fields__: ClassVar[Dict[str, Field[Any]]] = {}
 
     __data__: Dict[str, Any]
 
@@ -54,7 +54,7 @@ class Model(metaclass=ModelMeta):
 
         for key, value in kwargs.items():
             descriptor = getattr(cls, key, None)
-            if not isinstance(descriptor, FieldAttrDescriptor):
+            if not isinstance(descriptor, FieldExpr):
                 raise KeyError(f"{key} is not a field")
             setattr(self, key, value)
 
@@ -79,25 +79,24 @@ def alias(cls: Type[T_Model], name: str) -> Type[T_Model]:
 T = TypeVar("T")
 
 
-class FieldAttrDescriptor(Generic[T], Expr):
-    op = "field"
-
-    def __init__(self, table: Type[Model], field: FieldAttr[Any]) -> None:
+class FieldExpr(Generic[T], Expr):
+    def __init__(self, table: Type[Model], descriptor: Field[T]) -> None:
+        super().__init__("field")
         self.table = table
-        self.field = field
+        self.descriptor = descriptor
 
     def __str__(self) -> str:
-        return self.field.name
+        return self.descriptor.name
 
     def __repr__(self) -> str:
-        return f"{self.table()!r}.{self.field.name}"
+        return f"{self.table()!r}.{self.descriptor.name}"
 
 
-NO_VALUE = object()
+MISSING = object()
 
 
-class FieldAttr(Generic[T]):
-    descriptors: WeakKeyDictionary[Type[Model], FieldAttrDescriptor[T]]
+class Field(Generic[T]):
+    field_exprs: WeakKeyDictionary[Type[Model], FieldExpr[T]]
     name: str
     attr_name: str
     primary_key: bool
@@ -108,8 +107,9 @@ class FieldAttr(Generic[T]):
         name: Optional[str] = None,
         default: Optional[Callable[[], T]] = None,
         primary_key: bool = False,
+        references: Optional[FieldExpr[T]] = None,
     ):
-        self.descriptors = WeakKeyDictionary()
+        self.field_exprs = WeakKeyDictionary()
 
         if name is not None:
             self.name = name
@@ -118,6 +118,7 @@ class FieldAttr(Generic[T]):
             setattr(self, "default", default)
 
         self.primary_key = primary_key
+        self.references = references
 
     def default(self) -> T:
         raise NotImplementedError
@@ -133,29 +134,29 @@ class FieldAttr(Generic[T]):
         ...
 
     @overload
-    def __get__(self, inst: None, owner: Type[Model]) -> FieldAttrDescriptor[T]:
+    def __get__(self, inst: None, owner: Type[Model]) -> FieldExpr[T]:
         ...
 
     def __get__(
         self, inst: Optional[Model], owner: Type[Model]
-    ) -> Union[None, T, FieldAttrDescriptor[T]]:
+    ) -> Union[T, FieldExpr[T]]:
         if inst is None:
-            descriptor = self.descriptors.get(owner)
-            if descriptor is None:
-                descriptor = self.descriptors[owner] = FieldAttrDescriptor(owner, self)
-            return descriptor
+            field_expr = self.field_exprs.get(owner)
+            if field_expr is None:
+                field_expr = self.field_exprs[owner] = FieldExpr(owner, self)
+            return field_expr
 
-        value = inst.__data__.get(self.attr_name, NO_VALUE)
-        if value is not NO_VALUE:
-            return cast(Optional[T], value)
+        value = inst.__data__.get(self.attr_name, MISSING)
+        if value is not MISSING:
+            return cast(T, value)
 
         value = inst.__data__[self.attr_name] = self.default()
-        return cast(Optional[T], value)
+        return cast(T, value)
 
     def __set__(self, inst: Model, value: T) -> None:
         inst.__data__[self.attr_name] = value
 
 
-class NullableFieldAttr(FieldAttr[Optional[T]]):
-    def default(self) -> Optional[T]:
+class NullableField(Field[Optional[T]]):
+    def default(self) -> None:
         return None

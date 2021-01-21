@@ -4,192 +4,192 @@ import ipaddress
 import uuid
 from typing import Any, Union
 
-from hique.base import FieldAttr, NullableFieldAttr
+from hique.base import Field, NullableField
 
 
-class BigIntField(FieldAttr[int]):
+class BigIntField(Field[int]):
     pass
 
 
-class NullableBigIntField(NullableFieldAttr[int]):
+class NullableBigIntField(NullableField[int]):
     pass
 
 
-class BigSerialField(FieldAttr[int]):
+class BigSerialField(Field[int]):
     pass
 
 
-class NullableBigSerialField(NullableFieldAttr[int]):
+class NullableBigSerialField(NullableField[int]):
     pass
 
 
-class BooleanField(FieldAttr[bool]):
+class BooleanField(Field[bool]):
     pass
 
 
-class NullableBooleanField(NullableFieldAttr[bool]):
+class NullableBooleanField(NullableField[bool]):
     pass
 
 
-class ByteaField(FieldAttr[bytes]):
+class ByteaField(Field[bytes]):
     pass
 
 
-class NullableByteaField(FieldAttr[bytes]):
+class NullableByteaField(Field[bytes]):
     pass
 
 
-class CharacterField(FieldAttr[str]):
+class CharacterField(Field[str]):
     pass
 
 
-class NullableCharacterField(NullableFieldAttr[str]):
+class NullableCharacterField(NullableField[str]):
     pass
 
 
-class CharacterVaryingField(FieldAttr[str]):
+class CharacterVaryingField(Field[str]):
     pass
 
 
-class NullableCharacterVaryingField(NullableFieldAttr[str]):
+class NullableCharacterVaryingField(NullableField[str]):
     pass
 
 
-class CidrField(FieldAttr[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]]):
+class CidrField(Field[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]]):
     pass
 
 
 class NullableCidrField(
-    NullableFieldAttr[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]]
+    NullableField[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]]
 ):
     pass
 
 
-class DateField(FieldAttr[datetime.date]):
+class DateField(Field[datetime.date]):
     pass
 
 
-class NullableDateField(NullableFieldAttr[datetime.date]):
+class NullableDateField(NullableField[datetime.date]):
     pass
 
 
-class DoublePrecisionField(FieldAttr[float]):
+class DoublePrecisionField(Field[float]):
     pass
 
 
-class NullableDoublePrecisionField(NullableFieldAttr[float]):
+class NullableDoublePrecisionField(NullableField[float]):
     pass
 
 
-class InetField(FieldAttr[Union[ipaddress.IPv4Address, ipaddress.IPv6Address]]):
+class InetField(Field[Union[ipaddress.IPv4Address, ipaddress.IPv6Address]]):
     pass
 
 
 class NullableInetField(
-    NullableFieldAttr[Union[ipaddress.IPv4Address, ipaddress.IPv6Address]]
+    NullableField[Union[ipaddress.IPv4Address, ipaddress.IPv6Address]]
 ):
     pass
 
 
-class IntegerField(FieldAttr[int]):
+class IntegerField(Field[int]):
     pass
 
 
-class NullableIntegerField(NullableFieldAttr[int]):
+class NullableIntegerField(NullableField[int]):
     pass
 
 
-class IntervalField(FieldAttr[datetime.timedelta]):
+class IntervalField(Field[datetime.timedelta]):
     pass
 
 
-class NullableIntervalField(NullableFieldAttr[datetime.timedelta]):
+class NullableIntervalField(NullableField[datetime.timedelta]):
     pass
 
 
-class JsonField(FieldAttr[Any]):
+class JsonField(Field[Any]):
     pass
 
 
-class NullableJsonField(NullableFieldAttr[Any]):
+class NullableJsonField(NullableField[Any]):
     pass
 
 
-class JsonbField(FieldAttr[Any]):
+class JsonbField(Field[Any]):
     pass
 
 
-class NullableJsonbField(NullableFieldAttr[Any]):
+class NullableJsonbField(NullableField[Any]):
     pass
 
 
-class NumericField(FieldAttr[decimal.Decimal]):
+class NumericField(Field[decimal.Decimal]):
     pass
 
 
-class NullableNumericField(NullableFieldAttr[decimal.Decimal]):
+class NullableNumericField(NullableField[decimal.Decimal]):
     pass
 
 
-class RealField(FieldAttr[float]):
+class RealField(Field[float]):
     pass
 
 
-class NullableRealField(NullableFieldAttr[float]):
+class NullableRealField(NullableField[float]):
     pass
 
 
-class SmallIntField(FieldAttr[int]):
+class SmallIntField(Field[int]):
     pass
 
 
-class NullableSmallIntField(NullableFieldAttr[int]):
+class NullableSmallIntField(NullableField[int]):
     pass
 
 
-class SmallSerialField(FieldAttr[int]):
+class SmallSerialField(Field[int]):
     pass
 
 
-class NullableSmallSerialField(NullableFieldAttr[int]):
+class NullableSmallSerialField(NullableField[int]):
     pass
 
 
-class SerialField(FieldAttr[int]):
+class SerialField(Field[int]):
     pass
 
 
-class NullableSerialField(NullableFieldAttr[int]):
+class NullableSerialField(NullableField[int]):
     pass
 
 
-class TextField(FieldAttr[str]):
+class TextField(Field[str]):
     pass
 
 
-class NullableTextField(NullableFieldAttr[str]):
+class NullableTextField(NullableField[str]):
     pass
 
 
-class TimeField(FieldAttr[datetime.time]):
+class TimeField(Field[datetime.time]):
     pass
 
 
-class NullableTimeField(NullableFieldAttr[datetime.time]):
+class NullableTimeField(NullableField[datetime.time]):
     pass
 
 
-class TimestampField(FieldAttr[datetime.datetime]):
+class TimestampField(Field[datetime.datetime]):
     pass
 
 
-class NullableTimestampField(NullableFieldAttr[datetime.datetime]):
+class NullableTimestampField(NullableField[datetime.datetime]):
     pass
 
 
-class UUIDField(FieldAttr[uuid.UUID]):
+class UUIDField(Field[uuid.UUID]):
     pass
 
 
-class NullableUUIDField(NullableFieldAttr[uuid.UUID]):
+class NullableUUIDField(NullableField[uuid.UUID]):
     pass

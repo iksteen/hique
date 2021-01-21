@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import reduce
 from typing import Any, List, Type, Union
 
-from hique.base import FieldAttrDescriptor, Model
+from hique.base import FieldExpr, Model
 from hique.expr import Expr
 
 
@@ -38,7 +38,7 @@ def select(*values: Union[Expr, Type[Model]]) -> SelectQuery:
     from_: List[Type[Model]] = []
     for value in values:
         if isinstance(value, Expr):
-            if isinstance(value, FieldAttrDescriptor) and value.table not in from_:
+            if isinstance(value, FieldExpr) and value.table not in from_:
                 from_.append(value.table)
             values_.append(value)
             continue
