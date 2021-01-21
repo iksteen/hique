@@ -1,4 +1,5 @@
 from hique.base import Model, alias
+from hique.engine import Engine
 from hique.expr import FuncFactory, Literal, fn
 from hique.fields import (
     BigIntField,
@@ -49,17 +50,20 @@ from hique.fields import (
     UUIDField,
 )
 from hique.pgbuilder import PostgresqlQueryBuilder
+from hique.postgresql import PostgresqlDatabasePool
 from hique.query import SelectQuery, select
 
 __all__ = [
-    "Model",
-    "alias",
+    "Engine",
     "FuncFactory",
     "Literal",
-    "fn",
-    "SelectQuery",
-    "select",
+    "Model",
+    "PostgresqlDatabasePool",
     "PostgresqlQueryBuilder",
+    "SelectQuery",
+    "alias",
+    "fn",
+    "select",
     # Field types:
     "BigIntField",
     "NullableBigIntField",
