@@ -4,6 +4,7 @@ from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 from hique.base import FieldExpr
+from hique.builder import QueryBuilder
 from hique.expr import CallExpr, Expr
 from hique.query import Query, SelectQuery
 
@@ -20,7 +21,7 @@ class Args:
         return repr(self.args)
 
 
-class PostgresqlQueryBuilder:
+class PostgresqlQueryBuilder(QueryBuilder):
     precedence: List[Set[Optional[str]]] = [
         {"field", "literal", "arg", "call"},
         {"pos", "neg"},
@@ -42,10 +43,10 @@ class PostgresqlQueryBuilder:
             for op_name in op_names:
                 self.precedence_map[op_name] = i
 
-    def __call__(self, query: Query) -> Tuple[str, List[Any]]:
+    def __call__(self, query: Query) -> Tuple[str, Tuple[Any, ...]]:
         args = Args()
         if isinstance(query, SelectQuery):
-            return self.select(query, args), args.args
+            return self.select(query, args), tuple(args.args)
         raise NotImplementedError
 
     def select(self, query: SelectQuery, args: Args) -> str:

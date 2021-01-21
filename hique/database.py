@@ -3,8 +3,15 @@ from __future__ import annotations
 import abc
 from typing import Any, Dict, List
 
+from hique.builder import QueryBuilder
+
 
 class Database(metaclass=abc.ABCMeta):
+    @property
+    @abc.abstractmethod
+    def query_builder(self) -> QueryBuilder:
+        ...
+
     @abc.abstractmethod
     async def init(self, *args: Any, **kwargs: Any) -> None:
         ...

@@ -5,9 +5,11 @@ from typing import Any, Dict, List
 import asyncpg.transaction
 
 from hique.database import Connection, Database, Transaction
+from hique.pgbuilder import PostgresqlQueryBuilder
 
 
 class PostgresqlDatabasePool(Database):
+    query_builder = PostgresqlQueryBuilder()
     pool: asyncpg.pool.Pool
 
     def __init__(self) -> None:

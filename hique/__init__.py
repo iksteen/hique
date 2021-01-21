@@ -49,7 +49,6 @@ from hique.fields import (
     TimestampField,
     UUIDField,
 )
-from hique.pgbuilder import PostgresqlQueryBuilder
 from hique.postgresql import PostgresqlDatabasePool
 from hique.query import SelectQuery, select
 
@@ -59,7 +58,6 @@ __all__ = [
     "Literal",
     "Model",
     "PostgresqlDatabasePool",
-    "PostgresqlQueryBuilder",
     "SelectQuery",
     "alias",
     "fn",

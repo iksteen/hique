@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from contextvars import ContextVar, Token
 from types import TracebackType
-from typing import Any, Dict, Generator, List, Optional, Type
+from typing import Any, Dict, Generator, List, Optional, Type, Union, overload
 
 from hique.database import Connection, Database, Transaction
+from hique.query import Query
 
 
 class TransactionContext:
@@ -102,7 +103,20 @@ class Engine:
             "_transaction", default=None
         )
 
+    @overload
+    async def execute(self, query: Query) -> List[Dict[str, Any]]:
+        ...
+
+    @overload
     async def execute(self, query: str, *args: Any) -> List[Dict[str, Any]]:
+        ...
+
+    async def execute(
+        self, query: Union[Query, str], *args: Any
+    ) -> List[Dict[str, Any]]:
+        if isinstance(query, Query):
+            query, args = self.database.query_builder(query)
+
         conn = self._connection.get()
         if conn is None:
             conn = await self.database.connection()
