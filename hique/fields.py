@@ -2,9 +2,23 @@ import datetime
 import decimal
 import ipaddress
 import uuid
-from typing import Any, Union
+from typing import Any, List, Type, TypeVar, Union
 
 from hique.base import Field, NullableField
+
+T = TypeVar("T")
+
+
+class ArrayField(Field[List[T]]):
+    def __init__(self, type: Type[Field[T]], **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.item_type = type
+
+
+class NullableArrayField(NullableField[List[T]]):
+    def __init__(self, type: Type[Field[T]], **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.item_type = type
 
 
 class BigIntField(Field[int]):

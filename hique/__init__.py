@@ -2,6 +2,7 @@ from hique.base import Model, alias
 from hique.engine import Engine
 from hique.expr import FuncFactory, Literal, fn
 from hique.fields import (
+    ArrayField,
     BigIntField,
     BigSerialField,
     BooleanField,
@@ -16,6 +17,7 @@ from hique.fields import (
     IntervalField,
     JsonbField,
     JsonField,
+    NullableArrayField,
     NullableBigIntField,
     NullableBigSerialField,
     NullableBooleanField,
@@ -63,6 +65,8 @@ __all__ = [
     "fn",
     "select",
     # Field types:
+    "ArrayField",
+    "NullableArrayField",
     "BigIntField",
     "NullableBigIntField",
     "BigSerialField",
