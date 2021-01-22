@@ -29,8 +29,11 @@ class SelectQuery(Query):
         return self
 
     def __repr__(self) -> str:
-        filter = reduce(lambda a, i: a & i, self._filter[1:], self._filter[0])
-        return f"SELECT * FROM {','.join(f.__table_name__ for f in self._from)} WHERE {filter}"
+        if self._filter:
+            filter = f" WHERE {reduce(lambda a, i: a & i, self._filter[1:], self._filter[0])}"
+        else:
+            filter = ""
+        return f"SELECT * FROM {','.join(f.__table_name__ for f in self._from)}{filter}"
 
 
 def select(*values: Union[Expr, Type[Model]]) -> SelectQuery:
