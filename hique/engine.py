@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextvars import ContextVar, Token
 from types import TracebackType
-from typing import Any, Dict, Generator, List, Optional, Type, Union, overload
+from typing import Any, Generator, List, Mapping, Optional, Type, Union, overload
 
 from hique.database import Connection, Database, Transaction
 from hique.query import Query
@@ -104,16 +104,16 @@ class Engine:
         )
 
     @overload
-    async def execute(self, query: Query) -> List[Dict[str, Any]]:
+    async def execute(self, query: Query) -> List[Mapping[str, Any]]:
         ...
 
     @overload
-    async def execute(self, query: str, *args: Any) -> List[Dict[str, Any]]:
+    async def execute(self, query: str, *args: Any) -> List[Mapping[str, Any]]:
         ...
 
     async def execute(
         self, query: Union[Query, str], *args: Any
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Mapping[str, Any]]:
         if isinstance(query, Query):
             query, args = self.database.query_builder(query)
 

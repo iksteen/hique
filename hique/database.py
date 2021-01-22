@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import abc
-from typing import Any, Dict, List
+from typing import Any, List, Mapping
 
 from hique.builder import QueryBuilder
 
@@ -23,7 +23,7 @@ class Database(metaclass=abc.ABCMeta):
 
 class Connection(metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    async def execute(self, query: str, *args: Any) -> List[Dict[str, Any]]:
+    async def execute(self, query: str, *args: Any) -> List[Mapping[str, Any]]:
         ...
 
     @abc.abstractmethod

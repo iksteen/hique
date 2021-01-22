@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, List, Mapping, cast
 
 import asyncpg.transaction
 
@@ -28,8 +28,8 @@ class PostgresqlConnection(Connection):
         self.pool = pool
         self.conn = conn
 
-    async def execute(self, query: str, *args: Any) -> List[Dict[str, Any]]:
-        return list(map(dict, await self.conn.fetch(query, *args)))
+    async def execute(self, query: str, *args: Any) -> List[Mapping[str, Any]]:
+        return cast(List[Mapping[str, Any]], await self.conn.fetch(query, *args))
 
     async def transaction(self) -> PostgresqlTransaction:
         transaction = self.conn.transaction()
