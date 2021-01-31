@@ -52,7 +52,7 @@ from hique.fields import (
     UUIDField,
 )
 from hique.postgresql import PostgresqlDatabasePool
-from hique.query import SelectQuery, select
+from hique.query import SelectQuery
 
 __all__ = [
     "Engine",
@@ -63,7 +63,6 @@ __all__ = [
     "SelectQuery",
     "alias",
     "fn",
-    "select",
     # Field types:
     "ArrayField",
     "NullableArrayField",

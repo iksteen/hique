@@ -56,13 +56,25 @@ class Query:
 
 
 class SelectQuery(Query):
-    def __init__(self, *values: Expr) -> None:
+    def __init__(self, *values: Union[Expr, Type[Model]]) -> None:
         super().__init__()
-        self._values: List[Expr] = list(values)
+        self._values: List[Expr] = []
         self._from: List[Any] = []
         self._filter: List[Expr] = []
         self._join: Dict[Type[Model], List[Join]] = defaultdict(list)
         self._join_src: Optional[Type[Model]] = None
+
+        if values:
+            self.select(*values)
+
+    def select(self, *values: Union[Expr, Type[Model]]) -> SelectQuery:
+        for value in values:
+            if isinstance(value, type):
+                for field in value.__fields__.keys():
+                    self._values.append(getattr(value, field))
+            else:
+                self._values.append(value)
+        return self
 
     def from_(self, *sources: Type[Model], replace: bool = False) -> SelectQuery:
         if replace:
@@ -141,16 +153,3 @@ class SelectQuery(Query):
         else:
             filter = ""
         return f"SELECT * FROM {','.join(f.__table_name__ for f in self._from)}{filter}"
-
-
-def select(*values: Union[Expr, Type[Model]]) -> SelectQuery:
-    values_: List[Expr] = []
-
-    for value in values:
-        if isinstance(value, type):
-            for field in value.__fields__.keys():
-                values_.append(getattr(value, field))
-        else:
-            values_.append(value)
-
-    return SelectQuery(*values_)
