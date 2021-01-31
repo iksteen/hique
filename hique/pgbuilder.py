@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, Type
 
-from hique.base import FieldExpr
+from hique.base import FieldExpr, Model
 from hique.builder import QueryBuilder
 from hique.expr import CallExpr, Expr
-from hique.query import Query, SelectQuery
+from hique.query import Join, JoinType, Query, SelectQuery
+from hique.util import assert_never
 
 
 class Args:
@@ -50,6 +51,36 @@ class PostgresqlQueryBuilder(QueryBuilder):
         raise NotImplementedError
 
     def select(self, query: SelectQuery, args: Args) -> str:
+        def add_joins(
+            join_map: Dict[Type[Model], List[Join]],
+            model: Type[Model],
+            result: List[str],
+        ) -> None:
+            for join in join_map.get(model, []):
+                join_type = join.join_type
+                if join_type is JoinType.INNER:
+                    result.append("JOIN")
+                elif join_type is JoinType.LEFT:
+                    result.append("LEFT JOIN")
+                elif join_type is JoinType.RIGHT:
+                    result.append("RIGHT JOIN")
+                elif join_type is JoinType.FULL:
+                    result.append("FULL JOIN")
+                elif join_type is JoinType.CROSS:
+                    result.append("CROSS JOIN")
+                else:
+                    assert_never(join_type)
+
+                result.append(self.quote(join.dest.__table_name__))
+
+                if join.dest.__alias__ != join.dest.__table_name__:
+                    result.append(f"AS {self.quote(join.dest.__alias__)}")
+
+                if join_type is not JoinType.CROSS:
+                    result.extend(("ON", self.emit(join.condition, args)))
+
+                add_joins(join_map, join.dest, result)
+
         values = []
         for value in query._values:
             alias: Optional[str]
@@ -67,13 +98,16 @@ class PostgresqlQueryBuilder(QueryBuilder):
             froms = []
             for from_entry in query._from:
                 if from_entry not in from_set:
-                    from_table = self.quote(from_entry.__table_name__)
-                    from_alias = self.quote(from_entry.__alias__)
                     from_set.add(from_entry)
-                    if from_table != from_alias:
-                        froms.append(f"{from_table} AS {from_alias}")
-                    else:
-                        froms.append(from_table)
+
+                    from_table = [self.quote(from_entry.__table_name__)]
+                    from_alias = self.quote(from_entry.__alias__)
+
+                    if from_table[0] != from_alias:
+                        from_table.append(f"AS {from_alias}")
+
+                    add_joins(query._join, from_entry, from_table)
+                    froms.append(" ".join(from_table))
             from_ = f" FROM {', '.join(froms)}"
         else:
             from_ = ""
