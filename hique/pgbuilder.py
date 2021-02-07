@@ -154,7 +154,10 @@ class PostgresqlQueryBuilder(QueryBuilder):
 
     def emit_field(self, expr: Expr, args: Args) -> str:
         assert isinstance(expr, FieldExpr)
-        return self.quote(expr.table.__alias__, expr.descriptor.name, delim=".")
+        if expr.descriptor.expr is not None:
+            return self.emit(expr.descriptor.expr(), args)
+        else:
+            return self.quote(expr.table.__alias__, expr.descriptor.name, delim=".")
 
     def emit_call(
         self,

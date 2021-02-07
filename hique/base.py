@@ -113,6 +113,22 @@ class Field(Generic[T]):
     name: str
     attr_name: str
     primary_key: bool
+    expr: Optional[Callable[[], Expr]]
+
+    @overload
+    def __init__(
+        self,
+        *,
+        name: Optional[str] = None,
+        default: Optional[Callable[[], T]] = None,
+        primary_key: bool = False,
+        references: Optional[FieldExpr[T]] = None,
+    ):
+        ...
+
+    @overload
+    def __init__(self, *, expr: Callable[[], Expr]):
+        ...
 
     def __init__(
         self,
@@ -121,6 +137,7 @@ class Field(Generic[T]):
         default: Optional[Callable[[], T]] = None,
         primary_key: bool = False,
         references: Optional[FieldExpr[T]] = None,
+        expr: Optional[Callable[[], Expr]] = None,
     ):
         self.field_exprs = WeakKeyDictionary()
 
@@ -132,6 +149,7 @@ class Field(Generic[T]):
 
         self.primary_key = primary_key
         self.references = references
+        self.expr = expr
 
     def default(self) -> T:
         raise NotImplementedError
