@@ -133,14 +133,17 @@ class SelectQuery(Query):
                 for attr_name, field in dest.__fields__.items():
                     if (
                         field.references is not None
-                        and field.references.table is self._join_src
+                        and field.references.table in src.mro()
                     ):
                         break
                 else:
                     raise RuntimeError(
-                        f"Could not find join condition between {self._join_src!r} and {dest!r}."
+                        f"Could not find join condition between {src!r} and {dest!r}."
                     )
-                condition = field.references == getattr(dest, attr_name)
+
+                condition = getattr(
+                    src, field.references.descriptor.attr_name
+                ) == getattr(dest, attr_name)
             join = Join(dest=dest, join_type=join_type, condition=condition)
 
         self._join[src].append(join)
