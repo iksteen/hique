@@ -23,24 +23,37 @@ class ModelMeta(type):
     def __new__(
         mcs: Type[ModelMeta], name: str, bases: Tuple[type, ...], attr: Dict[str, Any]
     ) -> ModelMeta:
-        # Set up default table name.
-        if "__table_name__" not in attr:
-            attr["__table_name__"] = name.lower()
-
-        if "__alias__" not in attr:
-            attr["__alias__"] = attr["__table_name__"]
-
         # Clone fields so fields of the subclass don't end up in the superclass.
         _fields = {}
-        for base in bases:
+        # If all parents are abstract, come up with a catchy table name. Otherwise,
+        # inherit the table name from the parent.
+        parent_is_abstract = True
+        for base in bases[::-1]:
             if issubclass(base, Model):
                 _fields.update(base.__fields__)
+                if not base.__abstract__:
+                    parent_is_abstract = False
         attr["__fields__"] = _fields
+
+        # Set up default table name.
+        if "__abstract__" not in attr:
+            attr["__abstract__"] = False
+
+        if parent_is_abstract:
+            if "__table_name__" not in attr:
+                attr["__table_name__"] = name.lower()
+
+            if "__alias__" not in attr:
+                attr["__alias__"] = attr["__table_name__"]
+        else:
+            if "__alias__" not in attr:
+                attr["__alias__"] = name.lower()
 
         return cast(ModelMeta, super(ModelMeta, mcs).__new__(mcs, name, bases, attr))
 
 
 class Model(metaclass=ModelMeta):
+    __abstract__: ClassVar[bool] = True
     __table_name__: ClassVar[str]
     __alias__: ClassVar[str]
     __fields__: ClassVar[Dict[str, Field[Any]]] = {}
