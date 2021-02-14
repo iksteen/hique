@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, Ty
 from hique.base import FieldExpr, Model
 from hique.builder import QueryBuilder
 from hique.expr import CallExpr, Expr
-from hique.query import Join, JoinType, Query, SelectQuery
+from hique.query import BaseSelectQuery, Join, JoinType, Query
 from hique.util import assert_never
 
 
@@ -46,11 +46,11 @@ class PostgresqlQueryBuilder(QueryBuilder):
 
     def __call__(self, query: Query) -> Tuple[str, Tuple[Any, ...]]:
         args = Args()
-        if isinstance(query, SelectQuery):
+        if isinstance(query, BaseSelectQuery):
             return self.select(query, args), tuple(args.args)
         raise NotImplementedError
 
-    def select(self, query: SelectQuery, args: Args) -> str:
+    def select(self, query: BaseSelectQuery, args: Args) -> str:
         def add_joins(
             join_map: Dict[Type[Model], List[Join]],
             model: Type[Model],

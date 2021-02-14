@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     ClassVar,
@@ -18,6 +19,10 @@ from weakref import WeakKeyDictionary
 
 from hique.expr import Expr
 
+if TYPE_CHECKING:
+    from hique.engine import Engine
+    from hique.relationships import Backref
+
 
 class ModelMeta(type):
     def __new__(
@@ -25,15 +30,18 @@ class ModelMeta(type):
     ) -> ModelMeta:
         # Clone fields so fields of the subclass don't end up in the superclass.
         _fields = {}
+        _backrefs = {}
         # If all parents are abstract, come up with a catchy table name. Otherwise,
         # inherit the table name from the parent.
         parent_is_abstract = True
         for base in bases[::-1]:
             if issubclass(base, Model):
                 _fields.update(base.__fields__)
+                _backrefs.update(base.__backrefs__)
                 if not base.__abstract__:
                     parent_is_abstract = False
         attr["__fields__"] = _fields
+        attr["__backrefs__"] = _backrefs
 
         # Set up default table name.
         if "__abstract__" not in attr:
@@ -57,10 +65,13 @@ class Model(metaclass=ModelMeta):
     __table_name__: ClassVar[str]
     __alias__: ClassVar[str]
     __fields__: ClassVar[Dict[str, Field[Any]]] = {}
+    __backrefs__: ClassVar[Dict[str, Backref[Any]]] = {}
 
+    __engine__: Optional[Engine] = None
     __data__: Dict[str, Any]
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, *, __engine__: Optional[Engine] = None, **kwargs: Any):
+        self.__engine__ = __engine__
         self.__data__ = {}
 
         cls = type(self)

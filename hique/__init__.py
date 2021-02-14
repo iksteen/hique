@@ -52,7 +52,8 @@ from hique.fields import (
     UUIDField,
 )
 from hique.postgresql import PostgresqlDatabasePool
-from hique.query import SelectQuery
+from hique.query import ModelSelectQuery, SelectQuery
+from hique.relationships import Backref
 
 __all__ = [
     "Engine",
@@ -60,7 +61,9 @@ __all__ = [
     "Literal",
     "Model",
     "PostgresqlDatabasePool",
+    "ModelSelectQuery",
     "SelectQuery",
+    "Backref",
     "alias",
     "fn",
     # Field types:

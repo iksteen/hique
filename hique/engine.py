@@ -18,11 +18,13 @@ from typing import (
     overload,
 )
 
+from hique.base import Model
 from hique.database import Connection, Database, Transaction
-from hique.query import Query
+from hique.query import BaseSelectQuery, ModelSelectQuery, Query, SelectQuery
 from hique.task_local_state import TaskLocalState
 
 T = TypeVar("T")
+T_Model = TypeVar("T_Model", bound=Model)
 
 
 @dataclass
@@ -146,7 +148,11 @@ class Engine:
         return self._state.current
 
     @overload
-    async def execute(self, query: Query) -> List[Mapping[str, Any]]:
+    async def execute(self, query: ModelSelectQuery[T_Model]) -> List[T_Model]:
+        ...
+
+    @overload
+    async def execute(self, query: SelectQuery) -> List[Mapping[str, Any]]:
         ...
 
     @overload
@@ -155,7 +161,7 @@ class Engine:
 
     async def execute(
         self, query: Union[Query, str], *args: Any
-    ) -> List[Mapping[str, Any]]:
+    ) -> Union[List[Mapping[str, Any]], List[Model], List[T_Model]]:
         if isinstance(query, Query):
             query_, args = self.database.query_builder(query)
         else:
@@ -171,6 +177,8 @@ class Engine:
         try:
             async with self.state.lock:
                 result = await conn.execute(query_, *args)
+                if isinstance(query, BaseSelectQuery):
+                    return query.unwrap(self, result)
                 return result
         finally:
             if release:
