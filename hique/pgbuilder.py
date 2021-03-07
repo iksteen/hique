@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, Ty
 from hique.base import FieldExpr, Model
 from hique.builder import QueryBuilder
 from hique.expr import CallExpr, Expr
-from hique.query import BaseSelectQuery, Join, JoinType, Query
+from hique.query import BaseSelectQuery, InsertQuery, Join, JoinType, Query
 from hique.util import assert_never
 
 
@@ -48,6 +48,8 @@ class PostgresqlQueryBuilder(QueryBuilder):
         args = Args()
         if isinstance(query, BaseSelectQuery):
             return self.select(query, args), tuple(args.args)
+        elif isinstance(query, InsertQuery):
+            return self.insert(query, args), tuple(args.args)
         raise NotImplementedError
 
     def select(self, query: BaseSelectQuery, args: Args) -> str:
@@ -120,6 +122,32 @@ class PostgresqlQueryBuilder(QueryBuilder):
             where = ""
 
         return f"SELECT {', '.join(values)}{from_}{where}"
+
+    def insert(self, query: InsertQuery[Any], args: Args) -> str:
+        table_name = self.quote(query._model.__table_name__)
+        if query._model.__alias__ != query._model.__table_name__:
+            table_name = f"{table_name} AS {self.quote(query._model.__alias__)}"
+
+        columns, values = zip(*query._values.items())
+        columns_str = ", ".join(map(self.quote, columns))
+        values_str = ", ".join(map(partial(self.emit, args=args), values))
+
+        if query._returning:
+            returning = []
+            for value in query._returning:
+                alias: Optional[str]
+                if isinstance(value, FieldExpr):
+                    alias = f"{value.table.__alias__}.{value.__alias__ or value.descriptor.name}"
+                else:
+                    alias = value.__alias__ or None
+                if alias is None:
+                    returning.append(f"{self.emit(value, args)}")
+                else:
+                    returning.append(f"{self.emit(value, args)} AS {self.quote(alias)}")
+            returning_str = f" RETURNING {', '.join(returning)}"
+        else:
+            returning_str = ""
+        return f"INSERT INTO {table_name} ({columns_str}) VALUES ({values_str}){returning_str}"
 
     def get_precedence(self, expr: Any) -> int:
         if not isinstance(expr, Expr):

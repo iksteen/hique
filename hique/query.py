@@ -16,6 +16,7 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    cast,
     overload,
 )
 
@@ -185,7 +186,7 @@ class BaseSelectQuery(Query):
             filter = ""
         return f"SELECT * FROM {','.join(f.__table_name__ for f in self._from)}{filter}"
 
-    def unwrap(self, engine: Engine, rows: List[Mapping[str, Any]]) -> List[Any]:
+    def unwrap(self, *, engine: Engine, rows: List[Mapping[str, Any]]) -> List[Any]:
         return rows
 
 
@@ -201,6 +202,77 @@ class SelectQuery(BaseSelectQuery):
         self._from.extend(sources)
         self._join_src = self._from[-1]
         return self
+
+
+def unwrap_models(
+    *,
+    engine: Engine,
+    source: Type[T_Model],
+    joins: Mapping[Type[Model], List[Join]],
+    rows: List[Mapping[str, Any]],
+) -> List[T_Model]:
+    result: List[T_Model] = []
+
+    def get_pk_fields(model: Type[Model]) -> List[str]:
+        return [
+            f"{model.__alias__}.{field.attr_name}"
+            for field in model.__fields__.values()
+            if field.primary_key
+        ]
+
+    models: Dict[Type[Model], List[str]] = {
+        source: get_pk_fields(source),
+        **{
+            _join.dest: get_pk_fields(_join.dest)
+            for _joins in joins.values()
+            for _join in _joins
+        },
+    }
+
+    def get_pk_from_row(model: Type[Model], row: Mapping[str, Any]) -> Tuple[Any, ...]:
+        return tuple(row.get(pk_field) for pk_field in models[model])
+
+    joins_by_dest: Dict[Type[Model], List[Tuple[Type[Model], Join]]] = {}
+    for src, _joins in joins.items():
+        for _join in _joins:
+            if _join.attr_name:
+                joins_by_dest.setdefault(_join.dest, []).append((src, _join))
+
+    store: Dict[Type[Model], Dict[Tuple[Any, ...], Model]] = {
+        model: {} for model in models
+    }
+
+    for row in rows:
+        objects = {}
+
+        for model in models:
+            pk = get_pk_from_row(model, row)
+            instance = store[model].get(pk)
+            if instance is None:
+                instance = store[model][pk] = model(__engine__=engine)
+                if model is source:
+                    result.append(cast(T_Model, instance))
+            objects[model.__alias__] = instance
+
+        for key, value in row.items():
+            parts = key.split(".", 1)
+            if len(parts) == 2:
+                instance = objects.get(parts[0])
+                if instance is not None:
+                    setattr(instance, parts[1], value)
+
+        for instance in objects.values():
+            for src, _join in joins_by_dest.get(type(instance), ()):
+                if _join.attr_name in src.__backrefs__.keys() | src.__fields__.keys():
+                    objects[src.__alias__].__data__.setdefault(
+                        _join.attr_name, []
+                    ).append(instance)
+                elif _join.attr_name:
+                    if not hasattr(objects[src.__alias__], _join.attr_name):
+                        setattr(objects[src.__alias__], _join.attr_name, [])
+                    getattr(objects[src.__alias__], _join.attr_name).append(instance)
+
+    return result
 
 
 class ModelSelectQuery(Generic[T_Model], BaseSelectQuery):
@@ -233,72 +305,21 @@ class ModelSelectQuery(Generic[T_Model], BaseSelectQuery):
         self._from.append(model)
         self._join_src = model
 
-    def unwrap(self, engine: Engine, rows: List[Mapping[str, Any]]) -> List[T_Model]:
-        result = []
+    def unwrap(self, *, engine: Engine, rows: List[Mapping[str, Any]]) -> List[T_Model]:
+        return unwrap_models(
+            engine=engine, source=self._from[0], joins=self._join, rows=rows
+        )
 
-        def get_pk_fields(model: Type[Model]) -> List[str]:
-            return [
-                f"{model.__alias__}.{field.attr_name}"
-                for field in model.__fields__.values()
-                if field.primary_key
-            ]
 
-        source = self._from[0]
-        models = {
-            source: get_pk_fields(source),
-            **{
-                join.dest: get_pk_fields(join.dest)
-                for joins in self._join.values()
-                for join in joins
-            },
-        }
+class InsertQuery(Generic[T_Model], Query):
+    def __init__(self, model: Type[T_Model], **values: Any) -> None:
+        self._model = model
+        self._values: Dict[str, Any] = values.copy()
+        self._returning: List[Expr] = []
 
-        def get_pk_from_row(
-            model: Type[Model], row: Mapping[str, Any]
-        ) -> Tuple[Any, ...]:
-            return tuple(row.get(pk_field) for pk_field in models[model])
+    def returning(self, *exprs: Any) -> InsertQuery[T_Model]:
+        self._returning.extend(exprs)
+        return self
 
-        joins_by_dest: Dict[Type[Model], List[Tuple[Type[Model], Join]]] = {}
-        for src, joins in self._join.items():
-            for join in joins:
-                if join.attr_name:
-                    joins_by_dest.setdefault(join.dest, []).append((src, join))
-
-        store: Dict[Type[T_Model], Dict[Tuple[Any, ...], T_Model]] = {
-            model: {} for model in models
-        }
-
-        for row in rows:
-            objects = {}
-
-            for model in models:
-                pk = get_pk_from_row(model, row)
-                instance = store[model].get(pk)
-                if instance is None:
-                    instance = store[model][pk] = model(__engine__=engine)
-                    if model is source:
-                        result.append(instance)
-                objects[model.__alias__] = instance
-
-            for key, value in row.items():
-                parts = key.split(".", 1)
-                if len(parts) == 2:
-                    instance = objects.get(parts[0])
-                    if instance is not None:
-                        setattr(instance, parts[1], value)
-
-            for instance in objects.values():
-                for src, join in joins_by_dest.get(type(instance), ()):
-                    if (
-                        join.attr_name
-                        in src.__backrefs__.keys() | src.__fields__.keys()
-                    ):
-                        objects[src.__alias__].__data__.setdefault(
-                            join.attr_name, []
-                        ).append(instance)
-                    elif join.attr_name:
-                        if not hasattr(objects[src.__alias__], join.attr_name):
-                            setattr(objects[src.__alias__], join.attr_name, [])
-                        getattr(objects[src.__alias__], join.attr_name).append(instance)
-
-        return result
+    def unwrap(self, *, engine: Engine, rows: List[Mapping[str, Any]]) -> List[T_Model]:
+        return unwrap_models(engine=engine, source=self._model, joins={}, rows=rows)
