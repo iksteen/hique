@@ -22,6 +22,7 @@ from hique.base import Model
 from hique.database import Connection, Database, Transaction
 from hique.query import (
     BaseSelectQuery,
+    DeleteQuery,
     InsertQuery,
     ModelSelectQuery,
     Query,
@@ -161,6 +162,10 @@ class Engine:
 
     @overload
     async def execute(self, query: SelectQuery) -> List[Mapping[str, Any]]:
+        ...
+
+    @overload
+    async def execute(self, query: DeleteQuery) -> List[Mapping[str, Any]]:
         ...
 
     @overload
