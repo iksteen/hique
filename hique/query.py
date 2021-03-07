@@ -329,3 +329,13 @@ class InsertQuery(Generic[T_Model], Query):
 
     def unwrap(self, *, engine: Engine, rows: List[Mapping[str, Any]]) -> List[T_Model]:
         return unwrap_models(engine=engine, source=self._model, joins={}, rows=rows)
+
+
+class DeleteQuery(Query):
+    def __init__(self, model: Type[T_Model]):
+        self._model = model
+        self._filter: List[Expr] = []
+
+    def filter(self, *args: Expr) -> DeleteQuery:
+        self._filter.extend(args)
+        return self

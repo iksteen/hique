@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, Ty
 from hique.base import FieldExpr, Model
 from hique.builder import QueryBuilder
 from hique.expr import CallExpr, Expr
-from hique.query import BaseSelectQuery, InsertQuery, Join, JoinType, Query
+from hique.query import BaseSelectQuery, DeleteQuery, InsertQuery, Join, JoinType, Query
 from hique.util import assert_never
 
 
@@ -50,6 +50,8 @@ class PostgresqlQueryBuilder(QueryBuilder):
             return self.select(query, args), tuple(args.args)
         elif isinstance(query, InsertQuery):
             return self.insert(query, args), tuple(args.args)
+        elif isinstance(query, DeleteQuery):
+            return self.delete(query, args), tuple(args.args)
         raise NotImplementedError
 
     def select(self, query: BaseSelectQuery, args: Args) -> str:
@@ -148,6 +150,20 @@ class PostgresqlQueryBuilder(QueryBuilder):
         else:
             returning_str = ""
         return f"INSERT INTO {table_name} ({columns_str}) VALUES ({values_str}){returning_str}"
+
+    def delete(self, query: DeleteQuery, args: Args) -> str:
+        table_name = self.quote(query._model.__table_name__)
+        if query._model.__alias__ != query._model.__table_name__:
+            table_name = f"{table_name} AS {self.quote(query._model.__alias__)}"
+
+        if query._filter:
+            where = (
+                f" WHERE {' AND '.join([self.emit(f, args) for f in query._filter])}"
+            )
+        else:
+            where = ""
+
+        return f"DELETE FROM {table_name}{where}"
 
     def get_precedence(self, expr: Any) -> int:
         if not isinstance(expr, Expr):
