@@ -318,7 +318,13 @@ class InsertQuery(Generic[T_Model], Query):
         self._returning: List[Expr] = []
 
     def returning(self, *exprs: Any) -> InsertQuery[T_Model]:
-        self._returning.extend(exprs)
+        for expr in exprs:
+            if issubclass(expr, Model):
+                self._returning.extend(
+                    getattr(expr, attr_name) for attr_name in expr.__fields__.keys()
+                )
+            else:
+                self._returning.append(expr)
         return self
 
     def unwrap(self, *, engine: Engine, rows: List[Mapping[str, Any]]) -> List[T_Model]:
