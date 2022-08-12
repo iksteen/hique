@@ -57,7 +57,7 @@ class ModelMeta(type):
             if "__alias__" not in attr:
                 attr["__alias__"] = name.lower()
 
-        return cast(ModelMeta, super(ModelMeta, mcs).__new__(mcs, name, bases, attr))
+        return super(ModelMeta, mcs).__new__(mcs, name, bases, attr)
 
 
 class Model(metaclass=ModelMeta):
