@@ -67,8 +67,9 @@ class TransactionContext:
         conn = self.state.connection
         if conn is None:
             conn = yield from self._database.connection().__await__()
-            self._connection = self.state.connection = conn
+            self.state.connection = conn
 
+        self._connection = self.state.connection
         self._transaction = yield from conn.transaction().__await__()
         self.state.stack.append(self)
         return self.state
